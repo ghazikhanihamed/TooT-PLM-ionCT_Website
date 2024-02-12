@@ -1,17 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Protein Sequence Prediction</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
     <h1>Protein Function Prediction - TooT-PLM-ionCT</h1>
     <section id="system-description">
         <h2>About TooT-PLM-ionCT</h2>
         <p>
-            TooT-PLM-ionCT is a composite framework designed for the specific tasks of segregating ion channels (ICs) and ion transporters (ITs) from other membrane proteins, and differentiating ICs from ITs. This framework leverages six diverse Protein Language Models (PLMs) including ProtBERT, ProtBERT-BFD, ESM-1b, and ESM-2 variants, to predict protein functions effectively. Given the crucial role of these proteins in regulating ion movement across cellular membranes, TooT-PLM-ionCT aims to facilitate understanding of their functions without the need for time-consuming wet lab experiments. The system employs a combination of conventional and deep learning models to achieve superior performance in classifying ITs and distinguishing between ICs and ITs, contributing significantly to the field of bioinformatics.
+            TooT-PLM-ionCT is a composite framework designed for the specific tasks of segregating ion channels (ICs)
+            and ion transporters (ITs) from other membrane proteins, and differentiating ICs from ITs. This framework
+            leverages six diverse Protein Language Models (PLMs) including ProtBERT, ProtBERT-BFD, ESM-1b, and ESM-2
+            variants, to predict protein functions effectively. Given the crucial role of these proteins in regulating
+            ion movement across cellular membranes, TooT-PLM-ionCT aims to facilitate understanding of their functions
+            without the need for time-consuming wet lab experiments. The system employs a combination of conventional
+            and deep learning models to achieve superior performance in classifying ITs and distinguishing between ICs
+            and ITs, contributing significantly to the field of bioinformatics.
         </p>
     </section>
     <div>
@@ -44,25 +53,26 @@
                 },
                 body: 'proteinSequence=' + encodeURIComponent(sequence) + '&classificationType=' + encodeURIComponent(classificationType)
             })
-            .then(response => response.json())
-            .then(data => alert('Sequence submitted: ' + data.sequence + '\nClassification Type: ' + data.classificationType));
+                .then(response => response.json())
+                .then(data => alert('Sequence submitted: ' + data.sequence + '\nClassification Type: ' + data.classificationType));
         }
-    
+
         function submitFile() {
             var fileInput = document.getElementById('fastaFile');
             var classificationType = document.getElementById('classificationType').value;
             var formData = new FormData();
             formData.append('fastaFile', fileInput.files[0]);
             formData.append('classificationType', classificationType);
-    
+
             fetch('/submit_file', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
-            .then(data => alert('File submitted: ' + data.file_name + '\nClassification Type: ' + data.classificationType));
+                .then(response => response.json())
+                .then(data => alert('File submitted: ' + data.file_name + '\nClassification Type: ' + data.classificationType));
         }
     </script>
-    
+
 </body>
+
 </html>
