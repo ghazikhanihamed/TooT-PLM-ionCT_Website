@@ -42,6 +42,11 @@
         <button onclick="submitFile()">Submit File</button>
     </div>
 
+    <footer>
+        <p>&copy; <span id="year"></span> Bioinformatics Lab, Computer Science Department, Concordia University</p>
+        <p>Developed by Hamed Ghazikhani</p>
+    </footer>
+
     <script>
         function submitSequence() {
             var sequence = document.getElementById('proteinSequence').value;
@@ -71,6 +76,8 @@
                 .then(response => response.json())
                 .then(data => alert('File submitted: ' + data.file_name + '\nClassification Type: ' + data.classificationType));
         }
+
+        document.getElementById('year').textContent = new Date().getFullYear();
     </script>
 
 </body>
