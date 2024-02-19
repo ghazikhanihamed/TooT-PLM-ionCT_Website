@@ -9,46 +9,57 @@
 </head>
 
 <body>
-    <h1>Protein Function Prediction - TooT-PLM-ionCT</h1>
-    <section id="system-description">
-        <h2>About TooT-PLM-ionCT</h2>
-        <p>
-            TooT-PLM-ionCT is a composite framework designed for the specific tasks of segregating ion channels (ICs)
-            and ion transporters (ITs) from other membrane proteins, and differentiating ICs from ITs. This framework
-            leverages six diverse Protein Language Models (PLMs) including ProtBERT, ProtBERT-BFD, ESM-1b, and ESM-2
-            variants, to predict protein functions effectively. Given the crucial role of these proteins in regulating
-            ion movement across cellular membranes, TooT-PLM-ionCT aims to facilitate understanding of their functions
-            without the need for time-consuming wet lab experiments. The system employs a combination of conventional
-            and deep learning models to achieve superior performance in classifying ITs and distinguishing between ICs
-            and ITs, contributing significantly to the field of bioinformatics.
-        </p>
-    </section>
-    <div>
-        <p>Please provide your email address to receive prediction results. Due to the computational time required for
-            processing and analyzing protein sequences, results will be directly forwarded to your email as soon as they
-            are ready.</p>
-        <label for="emailAddress">Your Email Address:</label>
-        <input type="email" id="emailAddress" name="emailAddress" placeholder="yourname@example.com" required
-            pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" title="Please enter a valid email address.">
+    <div class="container">
+        <h1>Protein Function Prediction - TooT-PLM-ionCT</h1>
+        <section id="system-description">
+            <h2>About TooT-PLM-ionCT</h2>
+            <p>
+                TooT-PLM-ionCT is a composite framework designed for the specific tasks of segregating ion channels
+                (ICs)
+                and ion transporters (ITs) from other membrane proteins, and differentiating ICs from ITs. This
+                framework
+                leverages six diverse Protein Language Models (PLMs) including ProtBERT, ProtBERT-BFD, ESM-1b, and ESM-2
+                variants, to predict protein functions effectively. Given the crucial role of these proteins in
+                regulating
+                ion movement across cellular membranes, TooT-PLM-ionCT aims to facilitate understanding of their
+                functions
+                without the need for time-consuming wet lab experiments. The system employs a combination of
+                conventional
+                and deep learning models to achieve superior performance in classifying ITs and distinguishing between
+                ICs
+                and ITs, contributing significantly to the field of bioinformatics.
+            </p>
+        </section>
+        <div>
+            <h3>Submit Your Protein Sequence</h3>
+            <p>Please enter a single protein sequence in the field below. Our system is currently designed to process
+                one
+                sequence at a time to ensure accurate and efficient predictions.</p>
+        </div>
+        <div>
+            <label for="classificationType">Select Classification Type:</label>
+            <select id="classificationType" name="classificationType">
+                <option value="IC_MP">Ion Channels - Membrane Proteins</option>
+                <option value="IT_MP">Ion Transporters - Membrane Proteins</option>
+                <option value="IC_IT">Ion Channels - Ion Transporters</option>
+            </select>
+        </div>
+        <div>
+            <label for="proteinSequence">Enter Protein Sequence:</label>
+            <textarea id="proteinSequence" name="proteinSequence" pattern="[ACDEFGHIKLMNPQRSTVWY]+" required></textarea>
+            <button onclick="submitSequence()">Submit Sequence</button>
+        </div>
+        <!-- Loading Section -->
+        <div id="loadingSection" style="display:none;">
+            <img src="/static/images/loading.gif" alt="Processing..." />
+            <p>Processing your sequence, please wait...</p>
+        </div>
+        <!-- Results Section -->
+        <div id="resultsSection" style="display:none;">
+            <h3>Prediction Results</h3>
+            <p id="resultsText">Your results will appear here.</p>
+        </div>
     </div>
-    <div>
-        <label for="classificationType">Select Classification Type:</label>
-        <select id="classificationType" name="classificationType">
-            <option value="IC_MP">Ion Channels - Membrane Proteins</option>
-            <option value="IT_MP">Ion Transporters - Membrane Proteins</option>
-            <option value="IC_IT">Ion Channels - Ion Transporters</option>
-        </select>
-    </div>
-    <div>
-        <label for="proteinSequence">Enter Protein Sequence:</label>
-        <textarea id="proteinSequence" name="proteinSequence" pattern="[ACDEFGHIKLMNPQRSTVWY]+" required></textarea>
-        <button onclick="submitSequence()">Submit Sequence</button>
-    </div>
-    <!-- <div class="file-input">
-        <label for="fastaFile">Upload FASTA File:</label>
-        <input type="file" id="fastaFile" name="fastaFile" accept=".fasta">
-        <button onclick="submitFile()">Submit File</button>
-    </div> -->
 
     <footer>
         <p>&copy; <span id="year"></span> Bioinformatics Lab, Computer Science Department, Concordia University</p>
@@ -57,18 +68,20 @@
 
     <script>
         function submitSequence() {
-            var emailAddress = document.getElementById('emailAddress').value;
             var sequenceElement = document.getElementById('proteinSequence');
             var rawSequence = sequenceElement.value;
-
-            // Remove FASTA header (if present) and any whitespace characters
             var sequence = rawSequence.replace(/^>.*\n?/, '').replace(/\s+/g, '');
-            var regexPattern = /^[ACDEFGHIKLMNPQRSTVWY]+$/i; // Pattern for protein sequences
+            var regexPattern = /^[ACDEFGHIKLMNPQRSTVWY]+$/i;
 
             if (!regexPattern.test(sequence)) {
                 alert("Invalid protein sequence. Please enter a valid sequence consisting of amino acid letters.");
                 return;
             }
+
+            // Display the loading section
+            document.getElementById('loadingSection').style.display = 'block';
+            // Hide the results section in case it's already visible from a previous submission
+            document.getElementById('resultsSection').style.display = 'none';
 
             var classificationType = document.getElementById('classificationType').value;
             fetch('/submit_sequence', {
@@ -76,9 +89,11 @@
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: 'emailAddress=' + encodeURIComponent(emailAddress) + '&proteinSequence=' + encodeURIComponent(sequence) + '&classificationType=' + encodeURIComponent(classificationType)
+                body: 'proteinSequence=' + encodeURIComponent(sequence) + '&classificationType=' + encodeURIComponent(classificationType)
             })
                 .then(response => {
+                    // Hide the loading section regardless of the response
+                    document.getElementById('loadingSection').style.display = 'none';
                     if (!response.ok) {
                         return response.json().then(err => { throw err; });
                     }
@@ -88,51 +103,17 @@
                     if (data.error) {
                         alert('Error: ' + data.error);
                     } else {
-                        alert('Your sequence has been submitted successfully. You will receive the predictions in your email shortly.');
+                        // Display results
+                        document.getElementById('resultsText').innerText = 'Prediction: ' + data.prediction;
+                        document.getElementById('resultsSection').style.display = 'block';
                     }
                 })
                 .catch(error => {
+                    // Hide the loading section in case of an error
+                    document.getElementById('loadingSection').style.display = 'none';
                     alert('Error: ' + (error.error || error.message));
                 });
         }
-
-        function submitFile() {
-            var emailAddress = document.getElementById('emailAddress').value;
-            var fileInput = document.getElementById('fastaFile');
-            var classificationType = document.getElementById('classificationType').value;
-
-            if (fileInput.files.length === 0) {
-                alert("Please select a FASTA file to upload.");
-                return;
-            }
-
-            var formData = new FormData();
-            formData.append('fastaFile', fileInput.files[0]);
-            formData.append('classificationType', classificationType);
-            formData.append('emailAddress', emailAddress); // Include the email address in the form data
-
-            fetch('/submit_file', {
-                method: 'POST',
-                body: formData
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => { throw err; });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.error) {
-                        alert('Error: ' + data.error);
-                    } else {
-                        alert('Your file has been submitted successfully. You will receive the predictions in your email shortly.');
-                    }
-                })
-                .catch(error => {
-                    alert('Error: ' + (error.error || error.message));
-                });
-        }
-
 
         document.getElementById('year').textContent = new Date().getFullYear();
     </script>
