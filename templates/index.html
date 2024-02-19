@@ -24,23 +24,31 @@
         </p>
     </section>
     <div>
+        <p>Please provide your email address to receive prediction results. Due to the computational time required for
+            processing and analyzing protein sequences, results will be directly forwarded to your email as soon as they
+            are ready.</p>
+        <label for="emailAddress">Your Email Address:</label>
+        <input type="email" id="emailAddress" name="emailAddress" placeholder="yourname@example.com" required
+            pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" title="Please enter a valid email address.">
+    </div>
+    <div>
         <label for="classificationType">Select Classification Type:</label>
         <select id="classificationType" name="classificationType">
-            <option value="IC-MP">Ion Channels - Membrane Proteins</option>
-            <option value="IT-MP">Ion Transporters - Membrane Proteins</option>
-            <option value="IC-IT">Ion Channels - Ion Transporters</option>
+            <option value="IC_MP">Ion Channels - Membrane Proteins</option>
+            <option value="IT_MP">Ion Transporters - Membrane Proteins</option>
+            <option value="IC_IT">Ion Channels - Ion Transporters</option>
         </select>
     </div>
     <div>
         <label for="proteinSequence">Enter Protein Sequence:</label>
-        <textarea id="proteinSequence" name="proteinSequence"></textarea>
+        <textarea id="proteinSequence" name="proteinSequence" pattern="[ACDEFGHIKLMNPQRSTVWY]+" required></textarea>
         <button onclick="submitSequence()">Submit Sequence</button>
     </div>
-    <div class="file-input">
+    <!-- <div class="file-input">
         <label for="fastaFile">Upload FASTA File:</label>
         <input type="file" id="fastaFile" name="fastaFile" accept=".fasta">
         <button onclick="submitFile()">Submit File</button>
-    </div>
+    </div> -->
 
     <footer>
         <p>&copy; <span id="year"></span> Bioinformatics Lab, Computer Science Department, Concordia University</p>
@@ -49,33 +57,82 @@
 
     <script>
         function submitSequence() {
-            var sequence = document.getElementById('proteinSequence').value;
+            var emailAddress = document.getElementById('emailAddress').value;
+            var sequenceElement = document.getElementById('proteinSequence');
+            var rawSequence = sequenceElement.value;
+
+            // Remove FASTA header (if present) and any whitespace characters
+            var sequence = rawSequence.replace(/^>.*\n?/, '').replace(/\s+/g, '');
+            var regexPattern = /^[ACDEFGHIKLMNPQRSTVWY]+$/i; // Pattern for protein sequences
+
+            if (!regexPattern.test(sequence)) {
+                alert("Invalid protein sequence. Please enter a valid sequence consisting of amino acid letters.");
+                return;
+            }
+
             var classificationType = document.getElementById('classificationType').value;
             fetch('/submit_sequence', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: 'proteinSequence=' + encodeURIComponent(sequence) + '&classificationType=' + encodeURIComponent(classificationType)
+                body: 'emailAddress=' + encodeURIComponent(emailAddress) + '&proteinSequence=' + encodeURIComponent(sequence) + '&classificationType=' + encodeURIComponent(classificationType)
             })
-                .then(response => response.json())
-                .then(data => alert('Sequence submitted: ' + data.sequence + '\nClassification Type: ' + data.classificationType));
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw err; });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert('Your sequence has been submitted successfully. You will receive the predictions in your email shortly.');
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + (error.error || error.message));
+                });
         }
 
         function submitFile() {
+            var emailAddress = document.getElementById('emailAddress').value;
             var fileInput = document.getElementById('fastaFile');
             var classificationType = document.getElementById('classificationType').value;
+
+            if (fileInput.files.length === 0) {
+                alert("Please select a FASTA file to upload.");
+                return;
+            }
+
             var formData = new FormData();
             formData.append('fastaFile', fileInput.files[0]);
             formData.append('classificationType', classificationType);
+            formData.append('emailAddress', emailAddress); // Include the email address in the form data
 
             fetch('/submit_file', {
                 method: 'POST',
                 body: formData
             })
-                .then(response => response.json())
-                .then(data => alert('File submitted: ' + data.file_name + '\nClassification Type: ' + data.classificationType));
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw err; });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert('Your file has been submitted successfully. You will receive the predictions in your email shortly.');
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + (error.error || error.message));
+                });
         }
+
 
         document.getElementById('year').textContent = new Date().getFullYear();
     </script>

@@ -8,10 +8,23 @@ import numpy as np
 from settings import settings
 from transformers import EsmModel, EsmTokenizer
 from classes.Classifier import CNN
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import DataLoader
 from classes.PLMDataset import GridDataset
+import re
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
+
+password = os.getenv("PASSWORD")
 
 app = Flask(__name__)
+
+
+@app.route("/")
+def home():
+    return render_template("index.html")
+
 
 # Define the tasks and corresponding models
 tasks = {"IC_MP": settings.ESM1B, "IT_MP": settings.ESM1B, "IC_IT": settings.ESM2}
@@ -26,9 +39,58 @@ trained_models = {
 }
 # Load the CNN model state for IC_IT
 trained_models["IC_IT"].load_state_dict(
-    torch.load(f"{settings.FINAL_MODELS_PATH}/final_model_IC_IT.pt")
+    torch.load(
+        f"{settings.FINAL_MODELS_PATH}/final_model_IC_IT.pt", map_location=device
+    )
 )
 trained_models["IC_IT"].eval()
+
+
+def send_email(receiver_email, prediction_results):
+    sender_email = "toot.plm.ionct@gmail.com"
+
+    # Create a multipart message
+    message = MIMEMultipart()
+    message["From"] = sender_email
+    message["To"] = receiver_email
+    message["Subject"] = "TooT-PLM-ionCT: Protein Function Prediction Report"
+
+    body = f"""
+            Dear Client,
+
+            Thank you for choosing the TooT-PLM-ionCT Protein Function Prediction service.
+
+            We are pleased to inform you that we have completed the analysis of your submitted protein sequence(s). The predictions are as follows:
+
+            {prediction_results}
+
+            We hope these insights prove valuable to your research endeavors. Should you have any questions or require further assistance, please do not hesitate to contact us.
+
+            Warm regards,
+
+            The TooT-PLM-ionCT Team
+            Bioinformatics Lab
+            Computer Science Department
+            Concordia University
+            """
+
+    # Add body to email
+    message.attach(MIMEText(body, "plain"))
+
+    try:
+        # Log in to server and send email
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, password)
+        server.sendmail(sender_email, receiver_email, message.as_string())
+        server.quit()
+        print("Email sent successfully!")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+
+def is_valid_protein_sequence(sequence):
+    return re.match("^[ACDEFGHIKLMNPQRSTVWY]+$", sequence) is not None
 
 
 def load_esm_model(model_info):
@@ -69,7 +131,7 @@ def process_sequence(sequence, task):
         # Pass the representation through the CNN model
         with torch.no_grad():
             prediction = cnn_model(representation.unsqueeze(0)).argmax().item()
-        label = "IC" if prediction == 1 else "IT"
+        label = "Ion channel" if prediction == 1 else "Ion transporter"
     else:
         # For IC-MP and IT-MP tasks, use the logistic regression model for prediction
         lr_model = trained_models[task]
@@ -77,7 +139,11 @@ def process_sequence(sequence, task):
             representation.cpu().numpy().flatten()
         )  # Flatten the representation
         prediction = lr_model.predict([flat_representation])
-        label = "MP" if prediction == 0 else ("IC" if task == "IC_MP" else "IT")
+        label = (
+            "Other membrane protein"
+            if prediction == 0
+            else ("Ion channel" if task == "IC_MP" else "Ion transporter")
+        )
 
     return label
 
@@ -115,11 +181,11 @@ def make_prediction(representation, task):
 
     # Convert prediction to label
     if task == "IC_IT":
-        label = "IC" if prediction == 1 else "IT"
+        label = "Ion channel" if prediction == 1 else "Ion transporter"
     elif task == "IC_MP":
-        label = "MP" if prediction == 0 else "IC"
+        label = "Other membrane protein" if prediction == 0 else "Ion channel"
     else:
-        label = "MP" if prediction == 0 else "IT"
+        label = "Other membrane protein" if prediction == 0 else "Ion transporter"
 
     return label
 
@@ -127,84 +193,115 @@ def make_prediction(representation, task):
 @app.route("/submit_sequence", methods=["POST"])
 def submit_sequence():
     sequence = request.form["proteinSequence"]
-    task = request.form["task"]
+    emailAddress = request.form["emailAddress"]
+    task = request.form["classificationType"]
 
-    prediction = process_sequence(sequence, task)
-    return jsonify({"sequence": sequence, "prediction": prediction})
+    if not is_valid_protein_sequence(sequence):
+        return (
+            jsonify(
+                {
+                    "error": "Invalid protein sequence. Please enter a valid sequence consisting of amino acid letters."
+                }
+            ),
+            400,
+        )
+
+    predictions = process_sequence(sequence, task)
+
+    # Send the email
+    send_email(emailAddress, predictions)
+
+    # Respond to the client that the predictions will be emailed
+    return jsonify(
+        {
+            "message": "Your sequence has been submitted successfully. You will receive the predictions in your email shortly."
+        }
+    )
 
 
 @app.route("/submit_file", methods=["POST"])
 def submit_file():
     if "fastaFile" in request.files:
         fasta_file = request.files["fastaFile"]
-        task = request.form["task"]
-        predictions = {}
-
-        if task == "IC_IT":
+        task = request.form["classificationType"]
+        try:
             sequences = [str(record.seq) for record in SeqIO.parse(fasta_file, "fasta")]
-            model_info = tasks[task]
-            esm_model, tokenizer = load_esm_model(model_info)
-            esm_model = esm_model.to(device)
-            esm_model.eval()
-
-            representations = []
             for sequence in sequences:
-                # Replace UZOB with X
-                sequence = (
-                    sequence.replace("U", "X")
-                    .replace("Z", "X")
-                    .replace("O", "X")
-                    .replace("B", "X")
+                if not is_valid_protein_sequence(sequence):
+                    raise ValueError("Invalid sequence in FASTA file.")
+            predictions = {}
+
+            if task == "IC_IT":
+                sequences = [
+                    str(record.seq) for record in SeqIO.parse(fasta_file, "fasta")
+                ]
+                model_info = tasks[task]
+                esm_model, tokenizer = load_esm_model(model_info)
+                esm_model = esm_model.to(device)
+                esm_model.eval()
+
+                representations = []
+                for sequence in sequences:
+                    # Replace UZOB with X
+                    sequence = (
+                        sequence.replace("U", "X")
+                        .replace("Z", "X")
+                        .replace("O", "X")
+                        .replace("B", "X")
+                    )
+
+                    # Tokenize the sequence
+                    inputs = tokenizer(
+                        sequence,
+                        return_tensors="pt",
+                        padding=True,
+                        truncation=True,
+                        max_length=1024,
+                    )
+                    inputs = {k: v.to(device) for k, v in inputs.items()}
+
+                    # Generate representations
+                    with torch.no_grad():
+                        outputs = esm_model(**inputs)
+                        representation = outputs.last_hidden_state.mean(
+                            dim=1
+                        )  # Average pooling
+                        representations.append(representation.cpu().numpy())
+
+                # Convert list of numpy arrays to a single numpy array
+                representations = np.array(representations)
+
+                # Since we don't have labels for prediction, create dummy labels
+                dummy_labels = np.zeros(len(representations))
+
+                # Create dataset and dataloader for CNN model
+                test_dataset = GridDataset(
+                    torch.tensor(representations).float(), torch.tensor(dummy_labels)
+                )
+                test_loader = DataLoader(
+                    test_dataset, batch_size=settings.BATCH_SIZE, shuffle=False
                 )
 
-                # Tokenize the sequence
-                inputs = tokenizer(
-                    sequence,
-                    return_tensors="pt",
-                    padding=True,
-                    truncation=True,
-                    max_length=1024,
-                )
-                inputs = {k: v.to(device) for k, v in inputs.items()}
+                cnn_model = trained_models[task]
+                cnn_model.eval()
 
-                # Generate representations
                 with torch.no_grad():
-                    outputs = esm_model(**inputs)
-                    representation = outputs.last_hidden_state.mean(
-                        dim=1
-                    )  # Average pooling
-                    representations.append(representation.cpu().numpy())
+                    for data, _ in test_loader:
+                        data = data.to(device)
+                        outputs = cnn_model(data)
+                        predictions_batch = outputs.argmax(dim=1).cpu().numpy()
+                        for i, pred in enumerate(predictions_batch):
+                            predictions[sequences[i]] = (
+                                "Ion channel" if pred == 1 else "Ion transporter"
+                            )
+            else:
+                for record in SeqIO.parse(fasta_file, "fasta"):
+                    prediction = process_sequence(str(record.seq), task)
+                    predictions[record.id] = prediction
 
-            # Convert list of numpy arrays to a single numpy array
-            representations = np.array(representations)
-
-            # Since we don't have labels for prediction, create dummy labels
-            dummy_labels = np.zeros(len(representations))
-
-            # Create dataset and dataloader for CNN model
-            test_dataset = GridDataset(
-                torch.tensor(representations).float(), torch.tensor(dummy_labels)
-            )
-            test_loader = DataLoader(
-                test_dataset, batch_size=settings.BATCH_SIZE, shuffle=False
-            )
-
-            cnn_model = trained_models[task]
-            cnn_model.eval()
-
-            with torch.no_grad():
-                for data, _ in test_loader:
-                    data = data.to(device)
-                    outputs = cnn_model(data)
-                    predictions_batch = outputs.argmax(dim=1).cpu().numpy()
-                    for i, pred in enumerate(predictions_batch):
-                        predictions[sequences[i]] = "IC" if pred == 1 else "IT"
-        else:
-            for record in SeqIO.parse(fasta_file, "fasta"):
-                prediction = process_sequence(str(record.seq), task)
-                predictions[record.id] = prediction
-
-        return jsonify(predictions)
+            return jsonify(predictions)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
 
     return jsonify({"error": "No file found"})
 
