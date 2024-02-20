@@ -96,7 +96,7 @@ def process_sequence(sequence, task):
         outputs = esm_model(**inputs)
         representation = (
             outputs.last_hidden_state
-        )  # Consider adding .detach() if you plan to manipulate this tensor further
+        ) 
 
     if task == "IC_IT":
         cnn_model = trained_models[task]
@@ -162,6 +162,3 @@ def submit_sequence():
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=False)
     # app.run(debug=True)
-
-
-#  /home/h/h_ghazik/.conda/envs/web/lib/python3.11/site-packages/gunicorn -w 4 app:app -b :8000
