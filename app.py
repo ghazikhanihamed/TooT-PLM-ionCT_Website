@@ -121,7 +121,11 @@ def process_sequence(sequence, task):
             if prediction == 0
             else ("Ion Channel" if task == "IC_MP" else "Ion Transporter")
         )
-        labels = ["Non-ionic Membrane Protein", "Ion Channel"] if task == "IC_MP" else ["Non-ionic Membrane Protein", "Ion Transporter"]
+        labels = (
+            ["Non-ionic Membrane Protein", "Ion Channel"]
+            if task == "IC_MP"
+            else ["Non-ionic Membrane Protein", "Ion Transporter"]
+        )
         chart_image = generate_chart(probabilities, labels)
 
     return label, probabilities.tolist(), labels, chart_image
@@ -156,4 +160,8 @@ def submit_sequence():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=False)
+    # app.run(debug=True)
+
+
+#  /home/h/h_ghazik/.conda/envs/web/lib/python3.11/site-packages/gunicorn -w 4 app:app -b :8000
