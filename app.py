@@ -80,8 +80,6 @@ def process_sequence(sequence, task):
     sequence = (
         sequence.replace("U", "X").replace("Z", "X").replace("O", "X").replace("B", "X")
     )
-
-    # Tokenize the sequence for ESM model
     inputs = tokenizer(
         sequence,
         add_special_tokens=False,
@@ -90,19 +88,21 @@ def process_sequence(sequence, task):
         max_length=1024,
     )
     inputs = {k: v.to(device) for k, v in inputs.items()}
-
-    # Generate representations using ESM model
     with torch.no_grad():
         outputs = esm_model(**inputs)
-        representation = (
-            outputs.last_hidden_state
-        ) 
+        representation = outputs.last_hidden_state[0].cpu().numpy()
 
     if task == "IC_IT":
         cnn_model = trained_models[task]
         cnn_model.eval()
 
         with torch.no_grad():
+            representation = (
+                torch.tensor(representation, dtype=torch.float)
+                .unsqueeze(0)
+                .unsqueeze(0)
+            )
+            representation = representation.to(device)
             log_probs = cnn_model(representation)
             # Convert log probabilities to probabilities
             probabilities = torch.exp(log_probs).cpu().numpy().flatten()
@@ -113,12 +113,13 @@ def process_sequence(sequence, task):
     else:
         lr_model = trained_models[task]
         # Apply average pooling and ensure conversion to numpy for logistic regression prediction
-        pooled_representation = np.mean(representation.cpu().numpy(), axis=1)
+        # Average pooling
+        pooled_representation = np.mean(representation, axis=0)
         probabilities = lr_model.predict_proba(pooled_representation.reshape(1, -1))[0]
         prediction = lr_model.predict(pooled_representation.reshape(1, -1))[0]
         label = (
             "Non-ionic Membrane Protein"
-            if prediction == 0
+            if prediction == settings.MEMBRANE_PROTEINS
             else ("Ion Channel" if task == "IC_MP" else "Ion Transporter")
         )
         labels = (
@@ -160,5 +161,5 @@ def submit_sequence():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=False)
-    # app.run(debug=True)
+    # app.run(host="0.0.0.0", port=8000, debug=False)
+    app.run(debug=True)
