@@ -5,6 +5,7 @@ from transformers import EsmModel, EsmTokenizer
 from settings import settings
 from classes.Classifier import CNN
 from joblib import load
+import numpy as np
 
 app = Flask(__name__)
 
@@ -50,40 +51,47 @@ def process_sequence(sequence, task):
     esm_model = esm_model.to(device)
     esm_model.eval()
 
-    # Replace UZOB with X in the sequence
+    # Preprocess the sequence
     sequence = (
         sequence.replace("U", "X").replace("Z", "X").replace("O", "X").replace("B", "X")
     )
 
     # Tokenize the sequence for ESM model
     inputs = tokenizer(
-        sequence, return_tensors="pt", padding=True, truncation=True, max_length=1024
+        sequence,
+        add_special_tokens=False,
+        return_tensors="pt",
+        truncation=True,
+        max_length=1024,
     )
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
     # Generate representations using ESM model
     with torch.no_grad():
         outputs = esm_model(**inputs)
-        representation = outputs.last_hidden_state.mean(dim=1)  # Average pooling
+        representation = (
+            outputs.last_hidden_state
+        )  # Consider adding .detach() if you plan to manipulate this tensor further
 
-    # For IC-IT task, use the CNN model for prediction
     if task == "IC_IT":
         cnn_model = trained_models[task]
         cnn_model.eval()
 
         with torch.no_grad():
-            prediction = cnn_model(representation.unsqueeze(0)).argmax().item()
-        label = "Ion Channel" if prediction == 1 else "Ion Transporter"
+            log_probs = cnn_model(representation)
+            prediction = log_probs.max(1)[1].cpu().numpy().flatten()
+
+        label = "Ion Channel" if prediction[0] == 1 else "Ion Transporter"
     else:
-        # For IC-MP and IT-MP tasks, use the logistic regression model for prediction
         lr_model = trained_models[task]
-        flat_representation = (
-            representation.cpu().numpy().flatten()
-        )  # Flatten the representation
-        prediction = lr_model.predict([flat_representation])
+        # Apply average pooling and ensure conversion to numpy for logistic regression prediction
+        pooled_representation = np.mean(
+            representation.cpu().numpy(), axis=1
+        ) 
+        prediction = lr_model.predict(pooled_representation)
         label = (
             "Non-ionic Membrane Protein"
-            if prediction == 0
+            if prediction[0] == 0
             else ("Ion Channel" if task == "IC_MP" else "Ion Transporter")
         )
 
