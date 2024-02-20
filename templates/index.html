@@ -14,27 +14,29 @@
         <section id="system-description">
             <h2>About TooT-PLM-ionCT</h2>
             <p>
-                TooT-PLM-ionCT is a composite framework designed for the specific tasks of segregating ion channels
-                (ICs)
-                and ion transporters (ITs) from other membrane proteins, and differentiating ICs from ITs. This
-                framework
-                leverages six diverse Protein Language Models (PLMs) including ProtBERT, ProtBERT-BFD, ESM-1b, and ESM-2
-                variants, to predict protein functions effectively. Given the crucial role of these proteins in
-                regulating
-                ion movement across cellular membranes, TooT-PLM-ionCT aims to facilitate understanding of their
-                functions
-                without the need for time-consuming wet lab experiments. The system employs a combination of
-                conventional
-                and deep learning models to achieve superior performance in classifying ITs and distinguishing between
-                ICs
-                and ITs, contributing significantly to the field of bioinformatics.
+                TooT-PLM-ionCT is a specialized framework developed to accurately categorize ion channels (ICs) and ion
+                transporters (ITs), and to distinguish between these two types of membrane proteins. For the
+                classification tasks involving ICs and membrane proteins (IC-MP) as well as ITs and membrane proteins
+                (IT-MP), we employ the ESM-1b model paired with a logistic regression classifier. In contrast, for
+                distinguishing between ICs and ITs (IC-IT), the ESM-2 model is utilized alongside a Convolutional Neural
+                Network (CNN) for classification. This strategic use of advanced Protein Language Models (PLMs) and
+                machine learning techniques aims to streamline the understanding of these critical proteins' functions,
+                bypassing the need for extensive laboratory work and significantly contributing to advancements in
+                bioinformatics.
             </p>
+        </section>
+        <section id="learn-more">
+            <h2>Further Reading</h2>
+            <p>For a detailed understanding of the TooT-PLM-ionCT framework and its scientific foundations, you are
+                encouraged to read our research paper. The paper provides comprehensive insights into the methodology,
+                data analysis, and implications of our work in the field of bioinformatics.</p>
+            <a href="https://www.biorxiv.org/content/10.1101/2023.07.11.548644v1.abstract" target="_blank">Read the
+                Paper</a>
         </section>
         <div>
             <h3>Submit Your Protein Sequence</h3>
             <p>Please enter a single protein sequence in the field below. Our system is currently designed to process
-                one
-                sequence at a time to ensure accurate and efficient predictions.</p>
+                one sequence at a time to ensure accurate and efficient predictions.</p>
         </div>
         <div>
             <label for="classificationType">Select Classification Type:</label>
@@ -58,12 +60,17 @@
         <div id="resultsSection" style="display:none;">
             <h3>Prediction Results</h3>
             <p id="resultsText">Your results will appear here.</p>
+            <!-- Chart Image -->
+            <img id="chartImage" src="" alt="Prediction Probabilities Chart"
+                style="display: block; margin: 20px auto; max-width: 100%; height: auto;">
         </div>
+
     </div>
 
     <footer>
         <p>&copy; <span id="year"></span> Bioinformatics Lab, Computer Science Department, Concordia University</p>
         <p>Developed by Hamed Ghazikhani</p>
+        <p>Contact: <a href="mailto:h_ghazik@live.concordia.ca">h_ghazik@live.concordia.ca</a></p>
     </footer>
 
     <script>
@@ -103,8 +110,12 @@
                     if (data.error) {
                         alert('Error: ' + data.error);
                     } else {
-                        // Display results
+                        // Display the prediction result
                         document.getElementById('resultsText').innerText = 'Prediction: ' + data.prediction;
+                        // Display the chart image
+                        document.getElementById('chartImage').src = data.chartImage;
+                        document.getElementById('chartImage').style.display = 'block'; // Ensure the chart image is visible
+                        // Display the results section
                         document.getElementById('resultsSection').style.display = 'block';
                     }
                 })

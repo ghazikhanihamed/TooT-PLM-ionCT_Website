@@ -1,3 +1,11 @@
+import matplotlib
+
+matplotlib.use("Agg")  # Set the backend before importing pyplot
+import matplotlib.pyplot as plt
+import base64
+from io import BytesIO
+
+# The rest of your imports
 from flask import Flask, render_template, request, jsonify
 import torch
 import re
@@ -31,6 +39,23 @@ trained_models["IC_IT"].load_state_dict(
     torch.load(f"{settings.FINAL_MODELS_PATH}final_model_IC_IT.pt", map_location=device)
 )
 trained_models["IC_IT"].eval()
+
+
+def generate_chart(probabilities, labels):
+    fig, ax = plt.subplots()
+    ax.bar(labels, probabilities, color=["blue", "orange"])
+    ax.set_ylabel("Probabilities")
+    ax.set_title("Prediction Probabilities")
+
+    # Convert plot to PNG image
+    png_image = BytesIO()
+    plt.savefig(png_image, format="png")
+    plt.close(fig)  # Close the figure to free memory
+
+    # Encode PNG image to base64 string
+    png_image.seek(0)
+    base64_image = base64.b64encode(png_image.getvalue()).decode("utf-8")
+    return base64_image
 
 
 def is_valid_protein_sequence(sequence):
@@ -79,23 +104,27 @@ def process_sequence(sequence, task):
 
         with torch.no_grad():
             log_probs = cnn_model(representation)
-            prediction = log_probs.max(1)[1].cpu().numpy().flatten()
-
-        label = "Ion Channel" if prediction[0] == 1 else "Ion Transporter"
+            # Convert log probabilities to probabilities
+            probabilities = torch.exp(log_probs).cpu().numpy().flatten()
+            prediction = np.argmax(probabilities)
+            label = "Ion Channel" if prediction == 1 else "Ion Transporter"
+            labels = ["Ion Transporter", "Ion Channel"]
+            chart_image = generate_chart(probabilities, labels)
     else:
         lr_model = trained_models[task]
         # Apply average pooling and ensure conversion to numpy for logistic regression prediction
-        pooled_representation = np.mean(
-            representation.cpu().numpy(), axis=1
-        ) 
-        prediction = lr_model.predict(pooled_representation)
+        pooled_representation = np.mean(representation.cpu().numpy(), axis=1)
+        probabilities = lr_model.predict_proba(pooled_representation.reshape(1, -1))[0]
+        prediction = lr_model.predict(pooled_representation.reshape(1, -1))[0]
         label = (
             "Non-ionic Membrane Protein"
-            if prediction[0] == 0
+            if prediction == 0
             else ("Ion Channel" if task == "IC_MP" else "Ion Transporter")
         )
+        labels = ["Non-ionic Membrane Protein", "Ion Channel"] if task == "IC_MP" else ["Non-ionic Membrane Protein", "Ion Transporter"]
+        chart_image = generate_chart(probabilities, labels)
 
-    return label
+    return label, probabilities.tolist(), labels, chart_image
 
 
 @app.route("/submit_sequence", methods=["POST"])
@@ -113,8 +142,17 @@ def submit_sequence():
             400,
         )
 
-    prediction = process_sequence(sequence, task)
-    return jsonify({"prediction": prediction})
+    prediction, probabilities, chart_labels, chart_image = process_sequence(
+        sequence, task
+    )
+    return jsonify(
+        {
+            "prediction": prediction,
+            "probabilities": probabilities,
+            "chartLabels": chart_labels,
+            "chartImage": f"data:image/png;base64,{chart_image}",
+        }
+    )
 
 
 if __name__ == "__main__":
