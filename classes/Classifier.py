@@ -28,7 +28,7 @@ class CNN(nn.Module):
         self.fc1 = nn.Linear(output_dim, output_size)
 
     def forward(self, x):
-        x = x.unsqueeze(1)
+        # x = x.unsqueeze(1)
         # Convolutional layers
         x = [F.relu(conv(x)).squeeze(3) for conv in self.conv_layers]
 

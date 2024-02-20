@@ -1,11 +1,9 @@
 import matplotlib
 
-matplotlib.use("Agg")  # Set the backend before importing pyplot
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import base64
 from io import BytesIO
-
-# The rest of your imports
 from flask import Flask, render_template, request, jsonify
 import torch
 import re
@@ -97,11 +95,10 @@ def process_sequence(sequence, task):
         cnn_model.eval()
 
         with torch.no_grad():
-            representation = (
-                torch.tensor(representation, dtype=torch.float)
-                .unsqueeze(0)
-                .unsqueeze(0)
-            )
+            representation = torch.tensor(representation, dtype=torch.float)
+            representation = representation.unsqueeze(0).unsqueeze(0)
+            representation = representation.squeeze(2)
+
             representation = representation.to(device)
             log_probs = cnn_model(representation)
             # Convert log probabilities to probabilities
@@ -112,7 +109,7 @@ def process_sequence(sequence, task):
             chart_image = generate_chart(probabilities, labels)
     else:
         lr_model = trained_models[task]
-        # Apply average pooling and ensure conversion to numpy for logistic regression prediction
+        classes_order = lr_model.classes_
         # Average pooling
         pooled_representation = np.mean(representation, axis=0)
         probabilities = lr_model.predict_proba(pooled_representation.reshape(1, -1))[0]
@@ -122,11 +119,18 @@ def process_sequence(sequence, task):
             if prediction == settings.MEMBRANE_PROTEINS
             else ("Ion Channel" if task == "IC_MP" else "Ion Transporter")
         )
-        labels = (
-            ["Non-ionic Membrane Protein", "Ion Channel"]
-            if task == "IC_MP"
-            else ["Non-ionic Membrane Protein", "Ion Transporter"]
-        )
+
+        labels = [
+            (
+                "Non-ionic Membrane Protein"
+                if cls == settings.MEMBRANE_PROTEINS
+                else ("Ion Channel" if task == "IC_MP" else "Ion Transporter")
+            )
+            for cls in classes_order
+        ]
+        label_mapping = {cls: lbl for cls, lbl in zip(classes_order, labels)}
+        label = label_mapping[prediction]
+
         chart_image = generate_chart(probabilities, labels)
 
     return label, probabilities.tolist(), labels, chart_image
