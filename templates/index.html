@@ -46,10 +46,17 @@
                 <option value="IC_IT">Ion Channels - Ion Transporters</option>
             </select>
         </div>
-        <div>
+        <!-- Protein Sequence Submission Section -->
+        <div class="input-section">
             <label for="proteinSequence">Enter Protein Sequence:</label>
             <textarea id="proteinSequence" name="proteinSequence" pattern="[ACDEFGHIKLMNPQRSTVWY]+" required></textarea>
-            <button onclick="submitSequence()">Submit Sequence</button>
+            <div class="examples">
+                <span>Try an example sequence:</span>
+                <button class="example-btn" onclick="useExample('IC')">IC Example</button>
+                <button class="example-btn" onclick="useExample('IT')">IT Example</button>
+                <button class="example-btn" onclick="useExample('MP')">MP Example</button>
+            </div>
+            <button class="submit-btn" onclick="submitSequence()">Submit Sequence</button>
         </div>
         <!-- Loading Section -->
         <div id="loadingSection" style="display:none;">
@@ -124,6 +131,22 @@
                     document.getElementById('loadingSection').style.display = 'none';
                     alert('Error: ' + (error.error || error.message));
                 });
+        }
+
+        function useExample(type) {
+            let exampleSequence = '';
+            switch (type) {
+                case 'IC':
+                    exampleSequence = 'MAETTKLQLFVKASEDGESVGHCPSCQRLFMVLLLKGVPFTLTTVDTRRALDVLKDFAPGSQLPILLYDGDVKTDTLQIEEFLEETLGPPDFPSLAPRYRESNTAGNDIFHKFSAFIKNPVPTQDNALYQQLLRALTRLDSYLRAPLDHELAQEPHLRESHRRFLDGDQFTLADCSLLPKLHIVDTVCAHFRQLPIPAELSCVRRYLDSALQKKEFKYTCPHSAEILAAYQPAVHPR';
+                    break;
+                case 'IT':
+                    exampleSequence = 'MTSNVQLSETNSPRNQKTRPRAEKEEVDYMQRAQWLRAALLGANDGLVTVASLMMGVGSIKEDVKAMLLVGFAGLVAGACSMAIGEFVSVCTQRDIETAQMKRAIEHKTSLSAIDEQEEEEKKERLPNPGQAAIASALAFSVGAAMPLLGAVFIENHKVRMVVVAVVATIALVVFGVTGAVLGKTSVVKSSVRVVIGGWMAMALTFGLTKFIGSAAMQI';
+                    break;
+                case 'MP':
+                    exampleSequence = 'MAAGTSNYWEDLRKQARQLENELDLKLVSFSKLCTSYSHSGSRDGGRDRYSSDTTPLLNGSSQDRMFETMAIEIEQLLARLTGVNDKMAEYTHSAGVPSLNAALMHTLQRHRDILQDYTHEFHKTKANFTAIRERENLMGSVRKDIESYKSGSGVNNRRTELFLKEHDHLRNSDRLIEETISIAMATKENMTSQRGMLKSIHSKMNTLANRFPAVNSLIQRINLRKRRDSLILGGVIGICTILLLLYAFH';
+                    break;
+            }
+            document.getElementById('proteinSequence').value = exampleSequence;
         }
 
         document.getElementById('year').textContent = new Date().getFullYear();

@@ -1,64 +1,74 @@
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #333;
     background-color: #f4f4f4;
     line-height: 1.6;
-    margin: 0;
-    padding: 0;
-}
-
-h1,
-h2,
-h3 {
-    color: #0056b3;
 }
 
 .container {
     max-width: 800px;
-    margin: auto;
+    margin: 30px auto;
     padding: 20px;
     background-color: #fff;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.input-section {
+    margin: 20px 0;
 }
 
 label {
     display: block;
-    margin: 15px 0 5px;
+    margin-bottom: 10px;
+    font-weight: bold;
 }
 
-input[type="text"],
-textarea,
-select {
+textarea {
     width: 100%;
     padding: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     border: 1px solid #ddd;
     border-radius: 5px;
+    min-height: 100px;
 }
 
 button {
-    display: inline-block;
-    background-color: #0056b3;
+    background-color: #007bff;
     color: #fff;
-    padding: 10px 20px;
+    padding: 10px 15px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
+    transition: background-color 0.3s;
 }
 
 button:hover {
-    background-color: #004494;
+    background-color: #0056b3;
 }
 
-#loadingSection img {
-    display: block;
-    margin: 20px auto;
-    width: 150px;
-    /* Adjust based on your image's ideal size */
+.examples {
+    margin-bottom: 20px;
+}
+
+.example-btn {
+    background-color: #28a745;
+    margin-right: 5px;
+    transition: background-color 0.3s;
+}
+
+.example-btn:hover {
+    background-color: #218838;
+}
+
+.submit-btn {
+    width: 100%;
+    font-size: 1.1em;
 }
 
 footer {
     text-align: center;
-    margin-top: 30px;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
     color: #666;
 }
